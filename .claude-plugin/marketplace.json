@@ -1,0 +1,15 @@
+{
+  "name": "miso-tools",
+  "owner": {
+    "name": "yunsung",
+    "email": "yunsung@getmiso.com"
+  },
+  "plugins": [
+    {
+      "name": "loop-delegation",
+      "source": "./",
+      "description": "루프 원칙 기반 위임 스킬 + 공식도구 강제 가드레일 훅",
+      "version": "0.1.0"
+    }
+  ]
+}

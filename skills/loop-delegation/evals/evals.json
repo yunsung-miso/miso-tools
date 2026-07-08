@@ -1,0 +1,40 @@
+{
+  "skill_name": "loop-delegation",
+  "evals": [
+    {
+      "id": 0,
+      "eval_name": "junior-bug-fix-delegation",
+      "prompt": "주니어 팀원한테 검색 결과 화면에서 무한스크롤 시 중복 아이템 뜨는 버그 수정을 맡기려고 해. 지시서 좀 만들어줘",
+      "expected_output": "수신자=사람. 검증 가능한 완료 기준, 리뷰어(checker) 분리, 시간 기반 에스컬레이션 가드, 기록 지침이 포함된 주니어용 한국어 마크다운 지시서",
+      "files": []
+    },
+    {
+      "id": 1,
+      "eval_name": "agent-hourly-ci-loop",
+      "prompt": "claude한테 매시간 miso-native 레포 열린 PR들 CI 상태 확인하고 실패하면 고치게 시키고 싶은데, 에이전트용 작업 지시 프롬프트 작성해줘",
+      "expected_output": "수신자=예약 에이전트(C). 실행 수단으로 /schedule cron을 명시. 트리거·1회 실행 범위·소진 조건·기계 검증 가능한 완료 기준(gh pr checks)·시도 상한/무진전 중단/비용 가드·별도 checker·상태 기록 포함",
+      "files": []
+    },
+    {
+      "id": 2,
+      "eval_name": "simple-designer-request",
+      "prompt": "디자이너한테 신규 앱 아이콘 시안 3개 요청하는 지시 문서 하나 써줘. 다음 주 화요일까지 필요해",
+      "expected_output": "수신자=사람. 과잉 설계 없는 경량 지시서 — 목표, 수량, 마감, 전달 형식 중심. 가드/기록 등 무거운 루프 섹션 없음",
+      "files": []
+    },
+    {
+      "id": 3,
+      "eval_name": "in-session-subagent-parallel",
+      "prompt": "지금 이 세션에서 서브에이전트 여러 개로 4개 모듈 lint 에러를 병렬로 고치게 하고 싶어. 프롬프트 만들어줘",
+      "expected_output": "수신자=인세션 서브에이전트(B). Agent 도구용 프롬프트 문자열 + subagent_type/run_in_background 디스패치 설정, 기계 검증 완료 기준(pnpm lint 경고 0), 숫자 가드, 검증은 별도 디스패치로 분리. 사람용 산문 지시서 아님",
+      "files": []
+    },
+    {
+      "id": 4,
+      "eval_name": "proactive-scheduled-triage",
+      "prompt": "매일 아침 Datadog 프로덕션 에러를 자동으로 훑어서 새 유형이 있으면 Linear 이슈로 올리는 상시 에이전트를 만들고 싶어",
+      "expected_output": "수신자=예약/상시 에이전트(C). /schedule 실행 수단 명시, 트리거·1회 범위·소진 조건, Datadog을 정지/건강 조건에 연결, Linear를 기록·핸드오프에 연결, 최엄격 가드(범위 경계·에스컬레이션·중단 스위치·누적 상한)와 상태 기록",
+      "files": []
+    }
+  ]
+}
