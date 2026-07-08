@@ -1,6 +1,6 @@
 {
   "name": "miso-native",
-  "description": "miso-native 프로젝트 스킬(릴리즈·번들·OTA·센트리·시뮬레이터·e2e 등 15종) + e2e 하네스 가드 훅. 원천은 miso-native 레포, sync 스크립트로 미러.",
+  "description": "miso-native 프로젝트 스킬(릴리즈·번들·OTA·센트리·시뮬레이터·e2e 등 14종) + e2e 하네스 가드 훅.",
   "version": "0.1.0",
   "author": { "name": "yunsung", "email": "yunsung@getmiso.com" },
   "keywords": ["miso-native", "release", "bundle", "sentry", "skills"]
