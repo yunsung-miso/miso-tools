@@ -1,0 +1,7 @@
+{
+  "name": "loop-delegation",
+  "description": "루프 원칙 기반 위임 스킬 — 사람 팀원 지시서 / 인세션 서브에이전트 프롬프트 / 예약·상시 실행 설정 생성",
+  "version": "0.2.0",
+  "author": { "name": "yunsung", "email": "yunsung@getmiso.com" },
+  "keywords": ["delegation", "loop", "subagent", "schedule", "skills"]
+}

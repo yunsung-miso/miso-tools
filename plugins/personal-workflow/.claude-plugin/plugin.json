@@ -1,0 +1,7 @@
+{
+  "name": "personal-workflow",
+  "description": "윤성 개인 환경 전제 훅 — rtk 명령 재작성(토큰 절약) · git worktree settings/env 동기화. 의존물(rtk·worktree·SSM) 없으면 곱게 no-op.",
+  "version": "0.1.0",
+  "author": { "name": "yunsung", "email": "yunsung@getmiso.com" },
+  "keywords": ["rtk", "worktree", "personal", "hooks"]
+}

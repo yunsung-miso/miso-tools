@@ -1,0 +1,7 @@
+{
+  "name": "humanize",
+  "description": "윤성 개인화 윤문 스킬(humanize-me) + PR/리뷰/이슈 본문 제출 직전 humanize 파이프라인 자동 트리거 훅",
+  "version": "0.1.0",
+  "author": { "name": "yunsung", "email": "yunsung@getmiso.com" },
+  "keywords": ["humanize", "korean", "writing", "skills", "hooks"]
+}

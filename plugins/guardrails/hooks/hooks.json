@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Grep",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/lsp-first-reminder.sh\"" }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/prefer-official-tools.py\"" },
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-secret-exposure.sh\"" },
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/block-unanalyzable-bash.py\"" }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/lsp-first-bootstrap.sh\"" }
+        ]
+      }
+    ]
+  }
+}
