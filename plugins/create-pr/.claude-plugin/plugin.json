@@ -1,0 +1,7 @@
+{
+  "name": "create-pr",
+  "description": "PR 생성 스킬 — 간결성 하네스, 베이스 브랜치 자동 검출, 구조 PR Mermaid 다이어그램 강제. 미소 레포 PR 컨벤션(해요체 본문·docs 분리) 기준.",
+  "version": "0.1.0",
+  "author": { "name": "yunsung", "email": "yunsung@getmiso.com" },
+  "keywords": ["pr", "github", "review", "mermaid", "skills"]
+}

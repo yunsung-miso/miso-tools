@@ -1,11 +1,13 @@
 {
   "name": "miso-tools",
+  "description": "미소 작업용 Claude Code 플러그인 마켓플레이스 — 위임·가드레일·윤문·PR·miso-native 스킬/훅 팩.",
   "owner": { "name": "yunsung", "email": "yunsung@getmiso.com" },
   "plugins": [
     { "name": "loop-delegation",   "source": "./plugins/loop-delegation",   "version": "0.2.0" },
     { "name": "guardrails",        "source": "./plugins/guardrails",        "version": "0.1.0" },
     { "name": "personal-workflow", "source": "./plugins/personal-workflow", "version": "0.1.0" },
     { "name": "humanize",          "source": "./plugins/humanize",          "version": "0.1.0" },
+    { "name": "create-pr",         "source": "./plugins/create-pr",         "version": "0.1.0" },
     { "name": "miso-native",       "source": "./plugins/miso-native",       "version": "0.1.0" }
   ]
 }
