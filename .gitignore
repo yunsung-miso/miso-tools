@@ -1,2 +1,5 @@
 # 로컬 전용 설계/계획 문서 — 커밋하지 않음
 docs/specs/
+
+# guardrails 세션 산출물(감사 로그·HTML 보고서) — 커밋하지 않음
+.claude/guardrails/
