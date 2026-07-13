@@ -27,3 +27,16 @@ Maestro e2e 테스트의 **유일한 sanctioned 실행 경로**다. raw `maestro
 
 - 마이페이지 등 탭 전환 첫 탭이 네비를 놓칠 수 있다 → 더블탭으로 보강(탭은 멱등). retry 블록은 성공해도 exit 1 artifact를 남기니 피한다.
 - 콜드 번들/재번들 직후엔 첫 화면이 늦게 뜬다 → 알림 권한 팝업·첫 화면 대기 timeout을 넉넉히(120s 등).
+
+## 함정 (반복 금지 — PRD-6992 실측)
+
+1. **`simctl io recordVideo` 병행 금지.** 녹화가 켜져 있으면 iOS 26 시뮬레이터에서 앱 렌더/a11y 트리가 통째로 죽는다 — maestro는 시스템 알럿+빈 화면만 보고 전 스텝이 실패하는데, **JS 로그(Metro 콘솔)는 완전히 정상이라 앱 버그로 오진하기 딱 좋다** (4/4 재현, 녹화 off 즉시 PASS). 같은 세션에서 플로우가 갑자기 "앱 콘텐츠 텍스트 0개"로 전멸하면 코드 진단 전에 녹화 프로세스부터 확인한다(`pkill -INT -f recordVideo`).
+   - PR 데모 영상이 필요하면 실행과 녹화를 한 번에 하는 `E2E_HARNESS=1 maestro record --local <flow> <out.mp4>` 를 쓴다 (sentinel 필수, `--local`이라 클라우드 업로드 없음). 이후 임베드는 `pr-video` 스킬.
+2. **알림 권한 팝업은 조건부(`runFlow when`)로 닫지 않는다.** 팝업이 조건 평가보다 늦게 뜨면(콜드 번들 재컴파일 등) 그대로 놓치고, **시스템 알럿이 떠 있는 동안 앱 텍스트는 a11y 트리에서 아예 사라져** 이후 모든 visible 대기가 실패한다. `clearState: true` 런처럼 팝업이 확정적으로 뜨는 플로우는 확정 대기+탭으로 쓴다:
+   ```yaml
+   - extendedWaitUntil:
+       visible:
+         text: "허용 안 함"
+       timeout: 150000
+   - tapOn: "허용 안 함"
+   ```
