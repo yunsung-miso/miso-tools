@@ -8,6 +8,6 @@
     { "name": "personal-workflow", "source": "./plugins/personal-workflow", "version": "0.1.0" },
     { "name": "humanize",          "source": "./plugins/humanize",          "version": "0.1.0" },
     { "name": "create-pr",         "source": "./plugins/create-pr",         "version": "0.1.0" },
-    { "name": "miso-native",       "source": "./plugins/miso-native",       "version": "0.1.0" }
+    { "name": "miso-native",       "source": "./plugins/miso-native",       "version": "0.1.1" }
   ]
 }
