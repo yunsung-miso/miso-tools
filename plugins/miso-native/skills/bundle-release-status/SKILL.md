@@ -67,6 +67,43 @@ git log --no-merges --format='%s' "origin/${RELEASE}" origin/main --not "$V" \
 3. 둘 다 `+`이고 정규화 제목이 `/tmp/upstream_titles.txt`에 존재 → `~ 제목일치` (cherry-pick 충돌 해소로 patch-id가 바뀐 케이스 — 검토 권장)
 4. 어디에도 없음 → `❌ 누락`
 
+> ⚠️ **squash 머지된 bundle→release 통합 PR은 위 4단계 판정을 통째로 무력화한다.** 아래 별도 절을 반드시 먼저 읽을 것.
+
+### 2-1. squash 머지된 bundle→release 통합 PR (patch-id·제목 둘 다 실패)
+
+`bundle-to-release-merge`가 만든 통합 PR(`bundle-merge/{X}` → `release/{Y}`)이 **squash로 머지되면** 두 판정이 동시에 무력해진다.
+
+- **patch-id**: 번들 커밋 N개가 release에는 커밋 1개로 접히므로, 개별 patch-id가 upstream에 존재하지 않는다 → `git cherry`가 전부 `+`
+- **제목**: release 측 커밋 제목은 `[{X}] merge to {Y} (#{N})` 하나뿐 → 개별 제목이 사전에 없다
+
+게다가 통합 PR의 head는 release 위로 **rebase된 복사본**이라 SHA가 번들과 다르다. 그래서 `git merge-base --is-ancestor {PR head} origin/bundle/{X}` 도 실패하고, "번들 전체가 미수록"으로 보인다.
+
+실측(2026-08-04): `bundle/6.2607.1` → `release/6.2607.2`가 #1882로 squash 머지된 상태에서 `git log --oneline --cherry-pick --right-only origin/release/6.2607.2...origin/bundle/6.2607.1`이 **50건**을 냈다. 실제 미수록은 **1건**이었다. AI 웹뷰 피처 46커밋이 전부 오보.
+
+**판정 방법 — 통합 PR head의 커밋 제목과 대조한다.**
+
+```bash
+# 1. release 브랜치에서 통합 커밋(단일 부모 = squash)을 찾는다
+git log --format='%h %p %s' origin/release/{Y} --grep='merge to {Y}'
+#    부모가 1개면 squash, 2개면 merge 커밋(이 경우 위 4단계 판정이 정상 동작)
+
+# 2. 그 PR의 head ref 를 받는다 (머지 시 head 브랜치가 자동 삭제되어 로컬에 없다)
+git fetch origin refs/pull/{N}/head:refs/tmp/pr{N}
+
+# 3. PR 이 실제로 실어간 커밋 목록 (base = squash 커밋의 부모)
+git log --oneline {squash 커밋의 부모}..refs/tmp/pr{N}
+
+# 4. 3의 제목 집합을 normalize 해서 /tmp/upstream_titles.txt 에 합친 뒤 판정을 다시 돌린다
+git log --format='%s' {부모}..refs/tmp/pr{N} | normalize | sort -u >> /tmp/upstream_titles.txt
+
+# 5. 끝나면 임시 ref 정리
+git update-ref -d refs/tmp/pr{N}
+```
+
+교차검증으로 **후보를 release 위에 실제 cherry-pick**해 보는 것도 확실하다. 이미 내용이 들어있으면 `The previous cherry-pick is now empty`가 뜬다 — 그게 `✅ 수록` 확증이다. (read-only 원칙 때문에 이 검증은 임시 브랜치에서만 하고, 끝나면 브랜치를 지운다.)
+
+백포트 PR도 같은 함정을 만든다. `feature/{TICKET}/backport-{Y}` 처럼 **번들 커밋을 release로 따로 백포트한 PR**이 있으면 그 커밋은 이미 수록된 것이다. `gh pr list --base release/{Y} --state merged`로 백포트 PR 목록을 먼저 확인한다.
+
 수록 PR 번호 맵 (한 번만 구축, --history 타임라인에서도 재사용):
 
 ```bash
@@ -160,7 +197,9 @@ PRD-6560 출시 이력
 
 ## 가드레일
 
-- read-only 스킬 — 어떤 ref도 생성/수정하지 않는다.
+- read-only 스킬 — 어떤 ref도 생성/수정하지 않는다. (2-1의 `refs/tmp/*` fetch·검증용 임시 브랜치는 예외이며 반드시 정리한다.)
+- **`--cherry-pick`/`git cherry` 결과를 그대로 보고하지 말 것.** bundle→release 통합 PR이 squash 머지면 수십 건이 거짓 누락으로 나온다 → 2-1 절차로 재판정. 통합 커밋의 부모 개수(`%p`)로 squash 여부를 먼저 확인한다.
+- **누락 후보가 10건을 넘으면 오보를 먼저 의심한다.** 번들 한 사이클의 실제 미수록은 보통 한 자리 수다.
 - patch-id `-` 판정은 확정, 제목 매칭은 `~`로 신뢰도를 구분해 표기한다.
 - `git cherry`의 limit 인자(`$V`)를 빼먹으면 번들 전체 역사가 비교돼 결과가 오염된다 — 반드시 포함.
 - 제목 사전 범위는 `--not $V`로 제한한다 (main 전체 역사 비교 금지 — 성능·오탐).
