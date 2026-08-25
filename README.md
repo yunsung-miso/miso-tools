@@ -11,7 +11,7 @@
 | `guardrails` | 범용 가드레일 훅 — 파괴 명령 차단(force push→보호브랜치·원격삭제·rm -rf /·DROP·terraform destroy 등)·공식도구 강제·정적분석 불가 bash 차단·시크릿 노출 차단·LSP 우선·완료 시 감사/요약 HTML 보고서. 풀 권한 운영용, 의존물 없음 | 공용 |
 | `personal-workflow` | 윤성 개인 환경 훅 — rtk 재작성·worktree settings/env 동기화. 의존물 없으면 no-op | 윤성 개인 |
 | `humanize` | 한글 AI 티 제거 윤문 스킬 + PR/리뷰/이슈 제출 직전 자동 트리거 훅 | 공용 |
-| `create-pr` | PR 생성 스킬 — 간결성 하네스·베이스 브랜치 자동 검출·구조 PR Mermaid 강제 | 미소 레포 작업자 |
+| `create-pr` | PR 스킬 팩 — 생성(간결성 하네스·베이스 자동 검출·구조 PR Mermaid 강제)과 스택드 PR(`gh stack` 링크·편입·머지) | 미소 레포 작업자 |
 | `miso-native` | miso-native 프로젝트 스킬(릴리즈·번들·OTA·센트리·시뮬레이터·e2e 등 15종) + e2e 가드 훅 | miso-native 작업자 |
 
 ## 설치
