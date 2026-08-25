@@ -12,7 +12,7 @@
 | `personal-workflow` | 윤성 개인 환경 훅 — rtk 재작성·worktree settings/env 동기화. 의존물 없으면 no-op | 윤성 개인 |
 | `humanize` | 한글 AI 티 제거 윤문 스킬 + PR/리뷰/이슈 제출 직전 자동 트리거 훅 | 공용 |
 | `create-pr` | PR 스킬 팩 — 생성(간결성 하네스·베이스 자동 검출·구조 PR Mermaid 강제)과 스택드 PR(`gh stack` 링크·편입·머지) | 미소 레포 작업자 |
-| `miso-native` | miso-native 프로젝트 스킬(릴리즈·번들·OTA·센트리·시뮬레이터·e2e 등 15종) + e2e 가드 훅 | miso-native 작업자 |
+| `miso-native` | miso-native 프로젝트 스킬(릴리즈·번들·OTA·센트리·시뮬레이터·e2e·Branch 딥링크 감사 등 16종) + e2e 가드 훅 | miso-native 작업자 |
 
 ## 설치
 
