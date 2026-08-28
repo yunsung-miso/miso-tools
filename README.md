@@ -9,7 +9,7 @@
 | --- | --- | --- |
 | `loop-delegation` | 루프 원칙 기반 위임 산출물(사람 지시서 / 서브에이전트 프롬프트 / 예약·상시 실행 설정) 생성 | 공용 |
 | `guardrails` | 범용 가드레일 훅 — 파괴 명령 차단(force push→보호브랜치·원격삭제·rm -rf /·DROP·terraform destroy 등)·공식도구 강제·정적분석 불가 bash 차단·시크릿 노출 차단·LSP 우선·완료 시 감사/요약 HTML 보고서. 풀 권한 운영용, 의존물 없음 | 공용 |
-| `personal-workflow` | 윤성 개인 환경 훅 — rtk 재작성·worktree settings/env 동기화. 의존물 없으면 no-op | 윤성 개인 |
+| `personal-workflow` | 윤성 개인 환경 훅 — rtk 재작성·worktree settings/env 동기화(의존물 없으면 no-op) + Slack 커밋먼트 회수 스킬(`slack-my-commitments`) | 윤성 개인 |
 | `humanize` | 한글 AI 티 제거 윤문 스킬 + PR/리뷰/이슈 제출 직전 자동 트리거 훅 | 공용 |
 | `create-pr` | PR 스킬 팩 — 생성(간결성 하네스·베이스 자동 검출·구조 PR Mermaid 강제)과 스택드 PR(`gh stack` 링크·편입·머지) | 미소 레포 작업자 |
 | `miso-native` | miso-native 프로젝트 스킬(릴리즈·번들·OTA·센트리·시뮬레이터·e2e·Branch 딥링크 감사 등 16종) + e2e 가드 훅 | miso-native 작업자 |
