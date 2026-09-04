@@ -1,11 +1,24 @@
 ---
 name: release-create
-description: 머지된 release/{version} 브랜치 기준으로 v{version} 태그를 main 머지 커밋에 두고 GitHub Release를 자동 생성(기본 publish). test app 섹션의 빌드 번호/TestFlight 링크 placeholder는 사후 edit으로 채움. `--draft` 옵션으로 draft 생성도 가능.
+description: 심사 준비가 끝난 release/{version} 브랜치 tip에 v{version} 태그를 두고 push 해서 앱 심사 제출(store submit)과 production 리모트 배포를 발화하고, GitHub Release를 자동 생성(기본 publish). test app 섹션의 빌드 번호/TestFlight 링크 placeholder는 사후 edit으로 채움. `--draft` 옵션으로 draft 생성도 가능. "앱 심사 진행", "스토어 제출", "릴리즈 발사" 요청의 정본 경로.
 ---
 
 # Release Create Skill
 
-릴리즈 브랜치가 main으로 머지된 직후, **v{version} 태그를 main 머지 커밋에 만들어 push** 함으로써 `release.yml`(host store submit + remote deploy)을 트리거하고, 동시에 그 버전의 GitHub Release 노트를 자동 생성/publish 하는 스킬.
+심사 준비가 끝난 `release/{version}` 브랜치 tip에 **v{version} 태그를 만들어 push** 함으로써 `release.yml`(host store submit + remote deploy)을 트리거하고, 동시에 그 버전의 GitHub Release 노트를 자동 생성/publish 하는 스킬.
+
+**앱 심사 제출 = 태그 push.** 이 스킬이 심사 발사의 정본 경로다.
+
+## 릴리즈 파이프라인에서의 위치
+
+```
+release-branch-cut → (주차 개발) → bundle-to-release-merge
+  → ★ release-create (태그 push = 심사 제출 + 리모트 배포)
+  → 심사 통과·스토어 배포
+  → release-finish (release-to-main → main 머지 → tickets-done → 다음 주차 컷)
+```
+
+태그는 **main 머지 전에** release 브랜치 tip에 붙는다. main 머지는 심사 통과 뒤 `release-finish` 단계에서 일어난다. 실측(v6.2608.1): 태그 = `003d282d6` (release/6.2608.1 tip, 2026-08-21) / release→main PR #2034 머지 = `8787572` (2026-08-24) — **서로 다른 커밋이고 태그가 3일 앞선다.**
 
 ## 핵심 목적
 
@@ -15,31 +28,45 @@ description: 머지된 release/{version} 브랜치 기준으로 v{version} 태�
 
 ## When to use
 
-- `release/{version}` 브랜치가 `main`에 머지된 직후, **출시 액션(store submit + remote deploy)을 발화시키고 싶을 때**
-- 이미 만들어진 태그가 잘못된 commit을 가리키고 있어서 main 머지 커밋으로 정렬해야 할 때 (이미 출시가 끝난 후 단순 정렬이라면 워크플로우 재실행 부작용 확인 필수)
+- `release/{version}` 준비가 끝나 **앱 심사를 올릴 때** (store submit + production remote deploy 동시 발화)
+- 이미 만들어진 태그가 잘못된 commit을 가리켜 정렬해야 할 때 (이미 출시가 끝난 후 단순 정렬이라면 워크플로우 재실행 부작용 확인 필수)
+
+## ⛔ 하지 말 것: build-host-app 수동 dispatch
+
+"심사 올려줘" 요청에 `build-host-app.yml` 을 `stage=store` 로 직접 workflow_dispatch 하면 안 된다. `release.yml` 은 두 잡을 묶어서 돌린다:
+
+| 잡 | 내용 |
+|---|---|
+| `host-build` | build-host-app (both / store / cdn) |
+| `deploy-remotes` | customer·partner·auth·chat production 배포, `target_host_version={version}` |
+
+수동 dispatch 는 **리모트 배포를 통째로 빠뜨린다.** 새 host 버전을 target 하는 production 리모트가 없는 채로 바이너리만 심사에 올라간다. 태그·릴리즈 노트도 안 생긴다.
 
 ## Pre-flight Checks
 
-1. **PR 머지 확인**: `gh pr view <pr> --json mergeCommit,state,baseRefName` — state는 MERGED, baseRefName은 main이어야 함.
-2. **머지 커밋 확인**: PR의 mergeCommit SHA를 메인 타깃 커밋으로 사용.
-3. **태그 정합성**:
-   - 태그 commit이 Android `versionName`과 iOS `MARKETING_VERSION`에 일치해야 release.yml validate 통과 → 만약 태그 commit이 main에 없거나 정합성 안 맞으면 build 실패.
-   - 일반적으로 머지 커밋(main에 올라간 직후)을 태그 위치로 쓰면 안전.
-4. **이전 태그 확인**: `git tag --sort=-creatordate | head -5` 로 직전 버전 태그 확인 (compare URL용).
+1. **release 브랜치 tip 확정**: `git fetch origin --tags` 후 `git rev-parse origin/release/{version}` — 이 커밋이 태그 타깃.
+2. **번들 핫픽스 베이킹 확인**: 직전 번들(`bundle/{이전버전}`)의 OTA 핫픽스가 `bundle-to-release-merge` 로 들어와 있는지. 보통 release tip 이 `[{이전버전}] merge to {version}` PR 결과다.
+3. **release ⊇ main**: `git log origin/release/{version}..origin/main` 이 비어야 한다. 비어있지 않으면 main 의 변경이 이번 바이너리에서 사라진다.
+4. **열린 PR 없음**: `gh pr list --base release/{version} --state open` — 심사에 태울 작업이 남아있는지 확인.
+5. **버전 정합성**: 태그 commit 의 Android `versionName` 과 iOS `MARKETING_VERSION` 이 `{version}` 과 일치해야 `release.yml` validate 통과. 안 맞으면 워크플로우가 즉시 실패한다.
+6. **이전 태그 확인**: `git tag --sort=-creatordate | head -5` 로 직전 버전 태그 확인 (compare URL용).
+7. **릴리즈 노트 문구**: `packages/host/{ios,android}/fastlane/release-notes/` 의 스토어 노출 문구를 이번 버전용으로 바꿀지 확인 — 태그 push 후에는 재빌드해야 반영된다.
 
 ## Step-by-Step Flow
 
 ### 1. 기본 변수 수집
 
 ```bash
-PR_NUMBER=<릴리즈 머지 PR 번호>
-VERSION=<릴리즈 버전, 예: 6.2605.1>
+VERSION=<릴리즈 버전, 예: 6.2609.1>
 TAG="v${VERSION}"
 
-# main 머지 커밋 추출
-MERGE_COMMIT=$(gh pr view $PR_NUMBER --json mergeCommit --jq '.mergeCommit.oid')
-COMMIT_SHORT="${MERGE_COMMIT:0:8}"
+# 태그 타깃 = release 브랜치 tip
+git fetch origin --tags -q
+TARGET_COMMIT=$(git rev-parse "origin/release/${VERSION}")
+COMMIT_SHORT="${TARGET_COMMIT:0:8}"
 ```
+
+> 이미 출시가 끝난 버전의 태그를 main 머지 커밋으로 **정렬만** 하는 예외 케이스라면 `TARGET_COMMIT` 을 `gh pr view <PR> --json mergeCommit --jq '.mergeCommit.oid'` 로 대체한다. 이 경우 태그 push 가 store submit 을 재실행시키므로 새 run 을 즉시 cancel 할 것.
 
 `PREV_TAG` 는 Step 3 에서 계산 — 태그 생성 후가 시점적으로 정확함.
 
@@ -48,13 +75,14 @@ COMMIT_SHORT="${MERGE_COMMIT:0:8}"
 이 단계가 **스킬의 핵심**. 태그 push 가 `release.yml` 을 트리거해서 host store submit + remote deploy 가 돌아감.
 
 ```bash
-# 로컬에서 태그 만들기 (또는 이미 있으면 머지 커밋으로 옮기기)
+# 신규 태그 (일반 케이스) — force 금지
 git fetch --tags origin
-git tag -f "$TAG" "$MERGE_COMMIT"
+git tag "$TAG" "$TARGET_COMMIT"
+git push origin "$TAG"
 
-# 원격 푸시 → release.yml 발화
-rtk proxy git push origin "$TAG" --force
-# (RTK 없는 환경이면 일반 git push origin "$TAG" --force)
+# 기존 태그를 옮기는 예외 케이스만 -f / --force
+# git tag -f "$TAG" "$TARGET_COMMIT"
+# git push origin "$TAG" --force
 ```
 
 push 후 GitHub Actions 에서 `Release` 워크플로우 run을 확인:
@@ -62,6 +90,8 @@ push 후 GitHub Actions 에서 `Release` 워크플로우 run을 확인:
 ```bash
 gh run list --workflow=release.yml --limit 1
 ```
+
+`Validate Release Tag` 가 success 여야 버전 정합성이 맞은 것이다. 이어서 `Host Store Submit`(iOS/Android)과 `Deploy Remote Apps` 가 같이 도는지 확인한다 — 둘 중 하나만 보이면 잘못된 경로로 발사한 것.
 
 ⚠️ **이미 출시가 끝난 버전을 단순히 정렬하는 경우** (예: 태그를 release tip 에서 머지 커밋으로 옮기기): 재실행을 원치 않으면 force-push 직후 새 run 을 즉시 cancel 하거나 `concurrency` 그룹이 cancel 하도록 둘 것. 절대 hook bypass 금지.
 
@@ -83,7 +113,7 @@ PREV_TAG=$(git tag --sort=-version:refname | grep '^v[0-9]' | grep -v 'rc' | hea
 AUTO_NOTES=$(gh api -X POST repos/:owner/:repo/releases/generate-notes \
   -f tag_name="$TAG" \
   -f previous_tag_name="$PREV_TAG" \
-  -f target_commitish="$MERGE_COMMIT" \
+  -f target_commitish="$TARGET_COMMIT" \
   --jq '.body')
 ```
 
@@ -132,7 +162,9 @@ def normalize(t):
 out = []
 for line in os.environ['AUTO_NOTES'].splitlines():
     m = re.match(r'^(\* )(.+)( by @\S+ in \S+)$', line)
-    if m:
+    # 번들→릴리즈 통합 PR 제목("[X] merge to Y")은 ota 범위에도 그대로 들어있어
+    # 무조건 매칭된다. 개별 작업이 아니므로 표시 대상에서 제외한다.
+    if m and not re.match(r'^\[[\d.]+\] merge to ', m.group(2)):
         ver = shipped.get(normalize(m.group(2)))
         if ver:
             line = f"{m.group(1)}{m.group(2)} (OTA 선출시: {ver}){m.group(3)}"
@@ -152,7 +184,7 @@ fi
 | `{{AUTO_NOTES}}` | API에서 받은 changelog |
 | `{{VERSION}}` | 예: `6.2605.1` |
 | `{{TAG}}` | 예: `v6.2605.1` |
-| `{{COMMIT_SHORT}}` | 머지 커밋 short SHA |
+| `{{COMMIT_SHORT}}` | 태그 타깃 커밋 short SHA |
 
 빌드 번호와 TestFlight 링크 placeholder(`{{ANDROID_VERSION_CODE_PROD}}` 등)는 **그대로 둠** — release publish 후 빌드 결과 나오면 사람이 edit 으로 채움.
 
@@ -182,7 +214,7 @@ echo "$BODY" > /tmp/release-body.md
 gh release create "$TAG" \
   --title "$TAG" \
   --notes-file /tmp/release-body.md \
-  --target "$MERGE_COMMIT"
+  --target "$TARGET_COMMIT"
 ```
 
 리뷰 게이트가 필요하면 `--draft` 추가:
@@ -191,7 +223,7 @@ gh release create "$TAG" \
 gh release create "$TAG" \
   --title "$TAG" \
   --notes-file /tmp/release-body.md \
-  --target "$MERGE_COMMIT" \
+  --target "$TARGET_COMMIT" \
   --draft
 ```
 
@@ -214,9 +246,13 @@ gh release create "$TAG" \
 - **출시 후 정렬용 force-push**: 이미 store 출시가 끝난 버전을 단순 정렬하는 경우, 태그 force-push 가 store submit + deploy 를 재실행시키므로 새 run 을 즉시 cancel 하거나 concurrency 그룹이 cancel 하도록 둠. 절대 hook bypass 금지.
 - **버전 정합성**: `MARKETING_VERSION`(iOS)과 `versionName`(Android)이 태그 commit 에서 일치해야 `release.yml` validate 통과. 안 맞으면 워크플로우 실패하므로 push 전에 확인.
 - **draft 옵션**: 기본은 publish 상태로 생성. 리뷰 게이트가 필요한 경우만 `--draft` 추가.
+- **태그 push 는 되돌리기 어렵다**: iOS 는 `submit_for_review: true` 로 App Store 심사에 자동 제출되고, Android 는 Play `production` 트랙에 올라간다. 동시에 production 리모트 4종이 배포된다. 발사 전 사용자 확인을 받을 것.
+- **심사 발사에 `build-host-app` 수동 dispatch 금지**: 리모트 배포·태그·릴리즈 노트가 전부 누락된다. 위 "하지 말 것" 절 참고.
 
 ## Related
 
 - `.github/release.yml` — auto-generated notes 카테고리화 (`feature`/`bugfix`/`refactoring` 등 라벨 기준)
 - `.github/release-template.md` — body 템플릿
 - `.github/workflows/release.yml` — 태그 push 시 store submit + remote deploy 트리거 (release 자동 생성 단계는 제거됨)
+- `bundle-to-release-merge` — 선행 단계. 직전 번들 OTA 핫픽스를 release 에 baking.
+- `release-finish` / `release-to-main` — 후행 단계. 심사 통과 뒤 main 머지·티켓 정리·다음 주차 컷.
