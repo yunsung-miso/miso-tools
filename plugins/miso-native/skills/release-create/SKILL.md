@@ -89,10 +89,12 @@ git push origin "$TAG"
 # git push origin "$TAG" --force
 ```
 
-push 후 GitHub Actions 에서 `Release` 워크플로우 run을 확인:
+push 후 GitHub Actions 에서 이번 태그의 `Release` 워크플로우 run 을 확인한다. `--limit 1` 로 맨 위만 보면 아직 목록에 안 올라왔거나 다른 태그의 run 을 볼 수 있으니, `headBranch` 로 걸러낸다.
 
 ```bash
-gh run list --workflow=release.yml --limit 1
+gh run list --workflow=release.yml --limit 10 \
+  --json databaseId,headBranch,status,conclusion \
+  -q '[.[] | select(.headBranch=="'"$TAG"'")][0]'
 ```
 
 `Validate Release Tag` 가 success 면 버전 정합성이 맞은 것이다. 이어서 `Host Store Submit`(iOS/Android)과 `Deploy Remote Apps` 가 같이 도는지 본다. 둘 중 하나만 보이면 잘못된 경로로 올린 것이다.
