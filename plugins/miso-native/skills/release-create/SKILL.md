@@ -18,7 +18,9 @@ release-branch-cut → (주차 개발) → bundle-to-release-merge
   → release-finish (release-to-main → main 머지 → tickets-done → 다음 주차 컷)
 ```
 
-태그는 **main 머지 전에** release 브랜치 tip에 붙인다. main 머지는 심사를 통과한 뒤 `release-finish` 단계에서 한다.
+`release-finish` 는 심사 통과·배포 뒤의 마무리를 묶어 돌리는 스킬이다. 심사 제출과는 무관하다.
+
+태그는 **main 머지 전에** release 브랜치 tip에 붙인다. main 머지는 심사를 통과한 뒤 `release-finish` 안의 `release-to-main` 단계에서 한다.
 
 실측(v6.2608.1): 태그는 `003d282d6`(release/6.2608.1 tip, 2026-08-21), release→main PR #2034 의 머지 커밋은 `8787572`(2026-08-24). 서로 다른 커밋이고 태그가 3일 앞선다.
 
@@ -95,7 +97,7 @@ gh run list --workflow=release.yml --limit 1
 
 `Validate Release Tag` 가 success 면 버전 정합성이 맞은 것이다. 이어서 `Host Store Submit`(iOS/Android)과 `Deploy Remote Apps` 가 같이 도는지 본다. 둘 중 하나만 보이면 잘못된 경로로 올린 것이다.
 
-⚠️ **출시가 끝난 버전의 태그를 옮기기만 하는 경우**(release tip → 머지 커밋): 다시 돌리고 싶지 않다면 force-push 직후 새 run 을 바로 cancel 하거나 `concurrency` 그룹이 정리하게 둔다. hook 우회는 금지다.
+⚠️ **출시가 끝난 버전의 태그를 옮기기만 하는 경우**(release tip → 머지 커밋): force-push 직후 새 run 을 **직접 cancel 한다.** `release.yml` 의 concurrency 는 `cancel-in-progress: false` 라, 그룹에 맡기면 취소되지 않고 앞 run 이 끝난 뒤 실행된다. hook 우회는 금지다.
 
 ### 3. 직전 릴리즈 태그 계산 (compare URL 용)
 
@@ -244,8 +246,8 @@ gh release create "$TAG" \
 ## Safety Guardrails
 
 - **태그를 force-push 하기 전에 묻기**: 태그가 이미 다른 커밋을 가리키고 있으면, 옮기는 게 맞는지 사용자에게 한 번 확인한다.
-- **Husky pre-push**: 태그를 push 할 때도 pre-push 훅이 돈다. 환경이 깨져 있으면 사용자에게 `yarn install` 을 안내한다.
-- **출시 후 태그를 옮길 때**: store 출시가 끝난 버전이라면 force-push 로 store submit 과 배포가 다시 돈다. 새 run 을 바로 cancel 하거나 concurrency 그룹이 정리하게 둔다. hook 우회는 금지다.
+- **Husky pre-push**: 태그를 push 할 때도 pre-push 훅이 돈다. 환경이 깨져 있으면 사용자에게 `pnpm install` 을 안내한다.
+- **출시 후 태그를 옮길 때**: store 출시가 끝난 버전이라면 force-push 로 store submit 과 배포가 다시 돈다. 새 run 을 직접 cancel 한다. `release.yml` 의 concurrency 는 `cancel-in-progress: false` 라 그룹이 대신 취소해 주지 않는다. hook 우회는 금지다.
 - **버전 정합성**: 태그 커밋의 iOS `MARKETING_VERSION` 과 Android `versionName` 이 같아야 `release.yml` 의 validate 를 통과한다. 다르면 워크플로우가 실패하니 push 전에 확인한다.
 - **draft 옵션**: 기본은 publish 다. 리뷰를 한 번 거칠 때만 `--draft` 를 붙인다.
 - **태그 push 는 되돌리기 어렵다**: iOS 는 `submit_for_review: true` 라 App Store 심사에 자동 제출되고, Android 는 Play `production` 트랙에 올라간다. production 리모트 4종도 같이 배포된다. push 전에 사용자 확인을 받는다.
