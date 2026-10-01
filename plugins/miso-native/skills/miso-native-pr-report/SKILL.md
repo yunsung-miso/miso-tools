@@ -38,6 +38,7 @@ description: 미소 FE 챕터의 월간 PR 생산성 리포트를 만드는 스�
 - **리뷰 집계** — GitHub review 이벤트 기준, 셀프 리뷰 제외. Approve / Comment / Changes Requested 분리
 - **1인 repo 예외** — `roster.json`의 `review_exempt_repos`(현재 design-tokens)는 "사람 리뷰 없이 머지"·"리뷰·테스트 없이 반영" 수치에서만 뺀다. **다른 지표에서는 빼지 않고, 문제로 짚지도 않고, "X를 뺀 값"이라고 적지도 않는다** (사용자 결정)
 - **Give/Take·생산성×팀기여 산점도 금지** (2026-09 폐기) — 작성 PR이 많은 사람일수록 리뷰를 많이 해도 낮게 잡히는 구조다. 리뷰 기여는 **리뷰한 PR 수·CR 수 절대값**으로만 쓴다
+- **테스트 동반은 티켓 단위다** — 같은 티켓의 원작업 PR 중 하나라도 테스트 파일을 바꾸면 동반이다. 테스트를 별도 PR로 내도 티켓 번호가 같으면 잡히고, 다르면 빠진다. "구현·테스트 PR 분리"를 요청할 때는 "같은 티켓 번호로"를 함께 쓴다
 - **배포 성과 = DORA 4종 + 테스트 동반률** (기능=티켓 단위, `scripts/delivery.py`·`compare.py` 정의 그대로) — 배포 빈도(사용자 반영 기능/월, native는 스토어·OTA 태그·웹은 main 머지) · 리드타임(첫 커밋→반영, 개발 구간/반영 대기 분리, 대기는 repo 단위만) · 변경 실패(첫 머지 후 14일 안 롤백·revert·hotfix 또는 bundle/·codepush/ 긴급 Bugfix·Fix) · 복구 시간 · 테스트 동반(jest·Apex Test·maestro·playwright·e2e-mock). 개인 전후 비교는 **같은 repo 기준**, 도입 전 기준 없는 repo는 현황 표로. 기간: AI 엔터프라이즈 플랜 도입(2026-05) 전 1~4월(native는 재구축기 1~3월을 빼고 4월만), 후 6월~, 도입 달 제외. 기능은 시작월 귀속, 부분월은 일수 가중
 - **기술부채 = Refactor 유형 PR**로 한정. Chore(빌드·설정·의존성)는 부채 해결로 세지 않고 별도 표기
 - **100파일 캡** — `--json files`는 PR당 100파일까지만 반환. 초과 PR은 `gh api repos/{org}/{repo}/pulls/{n}/files --paginate`로 재수집
@@ -51,13 +52,17 @@ description: 미소 FE 챕터의 월간 PR 생산성 리포트를 만드는 스�
 다개월 추이·DORA까지 뽑는 달은 월 폴더를 만들고 번들 스크립트를 복사해 돌린다 (상위 폴더에 `repos.txt`·`names.json`·`roster.json`):
 
 ```bash
-cp ${CLAUDE_SKILL_DIR}/scripts/{fetch_months,fetch_extra,analyze,delivery,compare}.py 2026-MM/
+cp ${CLAUDE_SKILL_DIR}/scripts/{fetch_months,fetch_extra,analyze,delivery,compare,aggregate}.py 2026-MM/   # aggregate.py가 옆에 있으면 환경변수 없이 그걸 쓴다
 python3 2026-MM/fetch_months.py 2026-MM        # 504면 재시도·범위 반분. 동시 실행 금지
 python3 2026-MM/fetch_extra.py 2026-MM         # 첫 커밋 시각·머지 SHA (GraphQL 직접)
 python3 2026-MM/analyze.py 2026-01 … 2026-MM   # 반드시 전 월 — extras.json을 덮어쓴다
 NATIVE_GIT=<miso-native 클론> PNATIVE_GIT=<partner-native 클론> python3 2026-MM/delivery.py 2026-01 … 2026-MM
-python3 2026-MM/compare.py
+python3 2026-MM/compare.py   # 도입 후 기간은 raw9-*.json 마지막 달까지 자동, 부분월 가중치는 fetched_at으로 자동
 ```
+
+- 실행 전 `git -C <클론> fetch --tags` — 안 하면 최근 스토어·OTA 태그가 안 보여 이번 달 "반영 기능"이 덜 잡힌다
+- compare.py의 표 제목("6~9월 현황" 등)은 고정 문자열이다. 기간이 늘면 제목을 확인한다
+- 수집 결과 `meta.errors`가 비어 있고 repo별 건수가 0이 아닌지 확인한 뒤 analyze로 넘어간다. 504로 repo 하나가 빠지면 이후 숫자가 전부 틀린다
 
 단월만 볼 때:
 
@@ -184,6 +189,24 @@ cp ${CLAUDE_SKILL_DIR}/assets/gen/*.py gen/  # tokens·charts는 번들 최신�
 - 맨 끝에 **액션 표**(액션 · 담당 · 기한 · 다음 달 검증 지표). 검증 지표가 없는 액션은 다음 달에 확인할 수 없다
 - 맨 끝에 **이 자료의 한계** 섹션 (§7)
 
+### 6-1. 노션 회의록 토글 — 10분 분량
+
+회의에서 말로 진행하는 자료는 리포트 전체가 아니라 아래 골격만 둔다 (2026-10-01 사용자 확정). 합니다체.
+
+1. 첫 줄: 리포트 링크 · repo 수 · 기간 · 데이터 출처
+2. **요약** 한 문단 — 산출 · 리뷰 · 부채를 각 한 문장
+3. 전월 vs 이번 달 표 하나 (고유 작업 · 상위 1인 집중도 · 사람/봇 리뷰 · 리뷰 없이 머지 · CR · Refactor)
+4. 생산성 · 기술부채 · 리뷰 · 배포(DORA)를 각 2~3줄
+5. **함께 정할 것** — 회의에서 결정할 것만. 짧은 명사구로("~할지", "~ 담당 (후보, 기한)")
+6. **부탁드릴 것** — 결정이 아닌 요청. "~해 주세요". 요청마다 근거 수치를 붙인다 (예: 테스트 작성 요청 → repo별 반영 기능 수 · 테스트 동반률 표, `compare.json` repos.after)
+7. 한 줄 주의 (리뷰 지표 범위, 건수·LOC는 노력·품질 아님)
+
+- **결정과 요청을 한 제목 아래 섞지 않는다.** "오늘 정할 것" 아래 요청을 두면 어색하다는 피드백을 받았다
+- 전월 제안 이행 표, DORA 개인·repo·월별 표, 집계 기준 상세는 토글에서 빼고 리포트 링크로 보낸다
+- 안건은 사용자가 정한 내용을 그대로 쓴다. 문구를 다듬을 때는 선택지를 먼저 보여준다
+- 같은 안건을 어젠다 md와 리포트 "팀 차원 제안"(md·`build_report.py`)에도 맞춘다. 세 곳이 어긋나면 안 된다
+- 챕터 리뷰 정책은 **동료 2명 승인 후 머지**다. copilot 승인을 2명에 포함할지는 2026-10 회의 안건이다 — 결론이 나면 이 줄과 §1을 고친다
+
 전월 리포트가 있으면 **전월 액션 추적표**도 만든다 — 전월에 개선됐다고 기록된 지표가 이번 달에 유지됐는지 대조한다.
 
 ---
@@ -240,6 +263,9 @@ cp ${CLAUDE_SKILL_DIR}/assets/gen/*.py gen/  # tokens·charts는 번들 최신�
 
 **캡처는 차트뿐 아니라 모든 섹션을 한 장씩 본다.** 차트만 확인하고 넘어가면 목록·표 섹션의 붕괴를 놓친다. 위반은 폰트 축소로 때우지 않는다 — 라벨 위치를 옮기거나 항목을 줄인다. 고쳤으면 다시 돌린다.
 
+- **SVG 안쪽은 overflow 검사에 안 잡힌다.** 추이 차트의 끝점이 지정 `max`를 넘으면 점·라벨이 viewBox 밖으로 잘린다(2026-09 고유 작업 603 > max 600). `charts._axis_max`가 자동으로 올리지만, 빌드 후 `data-tip` 옆 `cy`가 상단 여백(16) 아래인지 확인한다
+- python playwright가 없으면 `visual_qa.py`가 멈춘다. 그때는 Playwright MCP로 `gen/qa_wrap.py` 산출물을 열어 `scrollWidth == clientWidth`와 컨테이너 밖 요소를 1280px·375px에서 evaluate로 검사하고, 무엇을 못 봤는지 전달 시 알린다
+
 렌더가 불가능한 환경이면 "시각 QA를 건너뛰었다"고 전달 시 알린다.
 
 ---
@@ -254,6 +280,11 @@ cp ${CLAUDE_SKILL_DIR}/assets/gen/*.py gen/  # tokens·charts는 번들 최신�
 - **백데이터 md** — 로컬 아카이브에 두고 필요하면 파일로 전달
 - **회의 어젠다 md** — 만들었으면 함께
 - 아카이브 `README.md`·`published-baselines.md`에 이번 달 링크·발행값을 적는다
+
+노션 편집 요령:
+- 이미 있는 토글은 `update_content`로 해당 셀·문장만 바꾼다. 통째 교체(`replace_content`)는 페이지에 다른 토글이 있으면 그대로 다시 넣는다
+- 본문의 `~` · `*` · `<`는 `\~` · `\*` · `\<`로 이스케이프한다. 안 하면 "1~4월 … 6~9월"이 취소선이 된다
+- 비공개 백데이터 페이지는 `gen/backdata_md.py` → `gen/md_to_notion.py`로 만들고, 라이브 페이지에 손으로 넣은 줄(copilot repo별 수치, 월평균 비교)이 생성기에 없으면 합쳐서 넣는다
 
 답변은 짧게. 무엇이 바뀌었는지와 판단이 필요한 지점만 쓴다.
 
@@ -280,6 +311,22 @@ repo가 편입·제외되면 총량이 전부 흔들린다. 이 순서로 처리
 6. 변경 경위는 리포트에 쓰지 않는다(§7). 부록 대상 repo 목록만 현재 기준으로 고치고, 경위는 아카이브 `published-baselines.md`에 남긴다
 
 범위를 **소급 적용할지 다음 달부터 적용할지**는 사용자에게 확인한다. 작업량이 10배 차이 난다.
+
+---
+
+## 11-1. 부분월로 낸 달을 말일 기준으로 다시 낼 때
+
+회의 일정 때문에 월말 전에 발행하고(예: 9/26), 다음 달 초에 말일 기준으로 다시 맞춰 달라는 요청이 온다. 사용자가 말한 기준일과 실제 발행 기준일이 다를 수 있다 — README·리포트 상단의 기간으로 확인하고 답변에 바로잡아 적는다.
+
+1. `python3 ${CLAUDE_SKILL_DIR}/scripts/remonth.py snapshot <월폴더> YYYY-MM <태그>` — 발행본(md·html·metrics·extras·delivery·compare)을 `snapshot-<태그>/`에 보존하고 그 달 `cache/`·`cache-extra/`를 옮긴다. **캐시를 안 옮기면 수집기가 캐시를 읽고 재수집을 건너뛴다**
+2. 태그 fetch (§2) → `fetch_months.py <repos.txt> YYYY-MM` → `fetch_extra.py <repos.txt> YYYY-MM` — **그 달만** 다시 받는다. 다른 달을 다시 받으면 발행값이 이유 없이 흔들린다
+3. `analyze.py`(1월부터 전부) → `delivery.py` → `compare.py`
+4. `remonth.py diff <월폴더> YYYY-MM <태그>` — 바뀐 값에 `*`. 다른 달 summary가 바뀌었다는 경고가 나오면 멈추고 원인을 찾는다
+5. diff의 `*` 행을 하나씩 따라가며 고친다: 백데이터 md(SSOT) → `build_report.py`·`dora_part.py`의 서술 상수(`/26` 같은 일수 나눗셈, "N일치" 캡션·부록·한계 문장, 사람 이름이 들어간 증감 목록, 판정·스코어카드·한 줄 평) → `verify_*.py` 기대값 → 빌드 → 시각 QA → 같은 URL 재발행
+6. 노션 회의 토글(셀 단위 `update_content`) · 비공개 백데이터 페이지 · 어젠다 md · README · `published-baselines.md`(발행값 표에 첫 발행값 열을 남기고 재수집 경위 한 줄)
+7. 리포트·노션에서 부분월 표기("N일치", "9/26", "9월*")를 grep으로 0건 확인한다. 재수집 경위는 `published-baselines.md`에만 쓴다(§7)
+
+서술 수치는 diff로 바뀐 것만 고치되, **증감 방향이 바뀐 문장**(줄던 사람이 늘어남, "0건"이 생김, "최저"가 바뀜)은 문장째 다시 쓴다.
 
 ---
 
@@ -314,3 +361,4 @@ repo가 편입·제외되면 총량이 전부 흔들린다. 이 순서로 처리
 - `scripts/fetch_months.py` · `fetch_extra.py` · `analyze.py` — 다개월 수집(504 재시도·반분)·첫 커밋/머지 SHA·월별 지표
 - `scripts/delivery.py` · `compare.py` — DORA(기능 단위)·AI 도입 전후 비교
 - `scripts/verify_totals.py` · `visual_qa.py` — 검증
+- `scripts/remonth.py` — 부분월 발행본 보존·캐시 이동(snapshot)과 재수집 후 대조(diff) (§11-1)

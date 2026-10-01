@@ -11,7 +11,7 @@ from collections import defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-SKILL = os.path.join(os.environ.get("CLAUDE_SKILL_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "scripts")
+SKILL = (os.path.join(os.environ["CLAUDE_SKILL_DIR"], "scripts") if os.environ.get("CLAUDE_SKILL_DIR") else os.path.dirname(os.path.abspath(__file__)) if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), "aggregate.py")) else os.path.expanduser("~/.claude/skills/miso-native-pr-report/scripts"))
 sys.path.insert(0, SKILL)
 import aggregate as A  # noqa: E402
 

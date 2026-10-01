@@ -10,11 +10,12 @@
 - 기능은 시작한 달(첫 PR 생성월) 기준으로 기간에 넣는다
 - 개인 전후 비교는 같은 repo 기준: 그 사람이 두 기간 모두 작업한 repo만 쓴다(기준 repo 열로 표기)
 - 도입 전 기준이 없는 repo(nexus 4/27 · design-tokens 6월 시작)는 6~9월 현황 표에만 둔다
-- 9월은 26일치라 월평균 분모에 26/30을 쓴다
+- 도입 후 기간은 6월부터 작업 폴더에 raw9-*.json이 있는 마지막 달까지 자동으로 늘어난다
+- 부분월(수집 시각이 그 달 안)은 월평균 분모에 수집일/말일 가중치를 자동으로 쓴다. 말일 뒤 재수집하면 1이 된다
 """
-import json, os, statistics, sys
+import calendar, datetime as dt, glob, json, os, statistics, sys
 from collections import defaultdict
-sys.path.insert(0, os.path.join(os.environ.get("CLAUDE_SKILL_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "scripts"))
+sys.path.insert(0, (os.path.join(os.environ["CLAUDE_SKILL_DIR"], "scripts") if os.environ.get("CLAUDE_SKILL_DIR") else os.path.dirname(os.path.abspath(__file__)) if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), "aggregate.py")) else os.path.expanduser("~/.claude/skills/miso-native-pr-report/scripts")))
 import aggregate as A  # noqa: E402
 
 H = os.path.dirname(os.path.abspath(__file__))
@@ -24,9 +25,24 @@ roster = json.load(open(os.path.join(ROOT, "roster.json")))
 disp = lambda l: names.get(l, l)
 APP = [disp(x) for x in roster["app_chapter"]]
 EXEMPT = {r.split("/")[1] for r in roster.get("review_exempt_repos", {})}
-BEFORE, AFTER = ["2026-01", "2026-02", "2026-03", "2026-04"], ["2026-06", "2026-07", "2026-08", "2026-09"]
+BEFORE = ["2026-01", "2026-02", "2026-03", "2026-04"]
+AFTER = sorted(m for m in (os.path.basename(f)[5:12] for f in glob.glob(os.path.join(H, "raw9-*.json"))) if m >= "2026-06")
 NATIVE = "miso-native"
-MW = {m: (26 / 30 if m == "2026-09" else 1.0) for m in BEFORE + AFTER}
+
+
+def month_weight(m):
+    """수집 시각이 그 달 안이면 부분월 — 수집일/말일. 그 외 1."""
+    try:
+        at = json.load(open(os.path.join(H, f"raw9-{m}.json")))["meta"]["fetched_at"]
+    except (OSError, KeyError):
+        return 1.0
+    d = dt.datetime.fromisoformat(at).date()
+    y, mo = int(m[:4]), int(m[5:])
+    last = calendar.monthrange(y, mo)[1]
+    return d.day / last if (d.year, d.month) == (y, mo) and d.day < last else 1.0
+
+
+MW = {m: month_weight(m) for m in BEFORE + AFTER}
 U = json.load(open(os.path.join(H, "delivery.json")))
 
 med = lambda xs: round(statistics.median(xs), 1) if xs else None

@@ -181,6 +181,15 @@ def fig_scatter_loglog(title, sub, pts, xt, yt, xlab, ylab, placements,
 
 
 # ────────── 6. 월별 추이 스몰 멀티플 (과거 월을 빼지 않는다) ──────────
+def _axis_max(tr):
+    """지정 max가 데이터보다 작으면 끝점이 viewBox 밖으로 잘린다 — 한 자릿수 단위로 올림."""
+    dmax = max((v for s in tr["s"] for v in s["v"] if v is not None), default=0)
+    if dmax <= tr["max"]:
+        return tr["max"]
+    unit = 10 ** int(math.log10(dmax))
+    return math.ceil(dmax * 1.15 / unit) * unit
+
+
 def fig_trends(title, sub, panels):
     """panels: [{t, sub, u, x:[월], s:[{n, v:[값 또는 None]}], max}]
 
@@ -190,8 +199,9 @@ def fig_trends(title, sub, panels):
     def spark(tr):
         W, H, L, R, T, B = 330, 168, 46, 16, 16, 34
         xs = [L + (W - L - R) * i / (len(tr["x"]) - 1) for i in range(len(tr["x"]))]
-        Y = lambda v: T + (H - T - B) * (1 - v / tr["max"])
-        g, step = [], tr["max"] / 2
+        mx = _axis_max(tr)
+        Y = lambda v: T + (H - T - B) * (1 - v / mx)
+        g, step = [], mx / 2
         for k in range(3):
             t = step * k
             g.append(f'<line class="c-grid" x1="{L}" y1="{Y(t):.1f}" x2="{W-R}" y2="{Y(t):.1f}"></line>')

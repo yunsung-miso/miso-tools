@@ -25,7 +25,7 @@ from collections import defaultdict
 
 H = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(H)
-sys.path.insert(0, os.path.join(os.environ.get("CLAUDE_SKILL_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "scripts"))
+sys.path.insert(0, (os.path.join(os.environ["CLAUDE_SKILL_DIR"], "scripts") if os.environ.get("CLAUDE_SKILL_DIR") else os.path.dirname(os.path.abspath(__file__)) if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), "aggregate.py")) else os.path.expanduser("~/.claude/skills/miso-native-pr-report/scripts")))
 import aggregate as A  # noqa: E402
 
 names = json.load(open(os.path.join(ROOT, "names.json")))
