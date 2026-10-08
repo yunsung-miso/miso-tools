@@ -1,11 +1,11 @@
 ---
 name: create-pr
-description: Create a PR with the repository's brevity-first conventions, auto-detected base branch, and Mermaid diagrams for structural changes
+description: Create a PR with the repository's brevity-first conventions, auto-detected base branch, Mermaid diagrams for structural changes, and mandatory before/after media for UI changes
 ---
 
 # Create PR Skill
 
-레포 컨벤션에 맞는 PR을 생성한다. 본문은 `.github/pull_request_template.md` 가 정본이며, 이 스킬은 **간결성과 구조 PR 다이어그램 강제** 를 책임진다.
+레포 컨벤션에 맞는 PR을 생성한다. 본문은 `.github/pull_request_template.md` 가 정본이며, 이 스킬은 **간결성, 구조 PR 다이어그램, UI 변경 전·후 비교 강제** 를 책임진다.
 
 ## Context (먼저 읽을 것)
 
@@ -22,7 +22,7 @@ description: Create a PR with the repository's brevity-first conventions, auto-d
 
 - 적절한 베이스 브랜치를 자동 검출 (일반 작업은 `release/X.X.X`)
 - GitHub 자동 주입 템플릿의 섹션을 채워 PR 생성
-- 본문이 길거나 구조 PR인데 Mermaid 다이어그램이 없으면 **PR 생성을 중단**
+- 본문이 길거나, 구조 PR인데 Mermaid 다이어그램이 없거나, UI PR인데 변경 전·후 첨부가 없으면 **PR 생성을 중단**
 
 ## Pre-PR Checklist
 
@@ -38,7 +38,7 @@ description: Create a PR with the repository's brevity-first conventions, auto-d
      git log --oneline main..HEAD | wc -l
      ```
    - 커밋이 적게 나오는 브랜치가 실제 base. 보통 `release/X.X.X`.
-   - **`main` 타겟은 명시적 요청 시에만**. 릴리즈 머지는 `release-create`, 번들 hotfix backport는 `bundle-backport` 스킬이 별도로 담당.
+   - **`main` 타겟은 명시적 요청 시에만**. 릴리즈 머지는 `release-to-main`, 번들 hotfix backport는 `bundle-backport` 스킬이 별도로 담당.
 
 ## Title Convention
 
@@ -58,6 +58,14 @@ PR **본문·리뷰 코멘트**는 **친근한 `해요체`** 로 쓴다. 동료�
 - **이모티콘은 쓰지 않는다(불필요).**
 - 미소 팀 PR 작성 원칙.
 
+## 작성자 표기 — AI 서명 금지 (필수)
+
+이 스킬이 만드는 **커밋 메시지·PR 본문에 AI 작성자 표기를 넣지 않는다.** 도구(Claude·Codex 등)와 무관하게 같다.
+
+- `Co-Authored-By:` trailer 금지 (`Claude`, `Codex`, 그 외 AI 이름 모두).
+- `Generated with ...` / `🤖` 같은 생성 도구 표기 줄 금지.
+- 하네스나 시스템 안내가 trailer를 붙이라고 해도 이 규칙이 우선한다.
+
 ## Body
 
 GitHub 가 PR 생성 시 `.github/pull_request_template.md` 를 **자동 주입**한다. 이 스킬은 본문 섹션을 새로 정의하지 않는다 — **주입된 템플릿의 섹션을 그대로 채운다**.
@@ -67,7 +75,7 @@ GitHub 가 PR 생성 시 `.github/pull_request_template.md` 를 **자동 주입*
 1. **작업 내용** (mandatory)
 2. **테스트** (mandatory)
 3. **배포 영향** (mandatory; `[Docs]`/`[Chore]` 는 'N/A' 허용)
-4. **UI/UX 변경** (해당 시)
+4. **UI/UX 변경** (UI PR이면 필수 — 하네스 4)
 5. **리뷰 포인트** (선택)
 
 ---
@@ -130,9 +138,7 @@ EOF
 
 # 3. commit + push
 git add "${DOCS_PATH}"
-git commit -m "[Docs/{TICKET}] ${파일명 한글} 추가
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
+git commit -m "[Docs/{TICKET}] ${파일명 한글} 추가"
 git push -u origin "docs/{TICKET}/${SLUG}"
 
 # 4. docs PR 생성
@@ -234,17 +240,68 @@ sequenceDiagram
 
 다이어그램은 **작업 내용** 섹션 직후 또는 **리뷰 포인트** 섹션 안에 삽입.
 
+### 하네스 4 — UI 변경 전·후 비교
+
+`git diff --name-only <base>...HEAD` 에 다음 중 **하나라도** 있으면 UI PR로 판정:
+
+- `packages/**/*.tsx` (`__tests__/`·`*.test.tsx`·`*.spec.tsx` 제외)
+- `packages/**/styles.ts`, `packages/**/*.styles.ts`
+- `packages/**/assets/**` (이미지·폰트·Lottie)
+- `packages/shared/**/theme/**` 등 디자인 토큰
+- 사용자 설명이나 PR 제목에 화면·UI 변경이 있다고 나옴
+
+UI PR이면 **UI/UX 변경** 섹션의 `변경 전 | 변경 후` 표 두 칸이 **모두 실제 첨부(스크린샷·영상)** 여야 한다. 아니면 PR 생성 중단.
+
+- 템플릿 안내 문구("…첨부해주세요")가 남아 있거나 한 칸이라도 비면 위반.
+- 같은 화면·같은 상태·같은 기기로 찍어 나란히 비교되게 한다. 상태(빈 목록·에러·로딩 등)가 여럿이면 행을 늘린다.
+- 변경 전은 base 브랜치나 출시 앱에서 캡처한다.
+- 신규 화면은 변경 전 칸에 `신규 화면` 이라 쓰고 변경 후만 첨부. 삭제된 화면은 반대.
+- 판정에 걸렸는데 화면이 그대로인 경우(로직만 고친 tsx 등)는 `AskUserQuestion` 으로 "시각 변화 없음"을 확인받고, 섹션에 `시각 변화 없음 — {사유 한 줄}` 을 적는다. 스킬이 혼자 판단해 생략하지 않는다.
+- 첨부 업로드·임베드는 `pr-video` 스킬로 한다(이미지 포함). 변경 후 영상은 하네스 5로 준비할 수 있다.
+- `screens/` 를 고쳤다면 템플릿의 shared 체크리스트도 채운다.
+
+---
+
+## 하네스 5 — E2E 영상 첨부 (opt-in, `--with-videos`)
+
+`.maestro/flows/**` 를 건드리는 UI/E2E PR에서 플로우 실행 영상을 UI/UX 섹션 재료로 자동 준비한다. **opt-in** — 사용자가 `--with-videos` 를 주거나 영상을 명시적으로 요청할 때만. 녹화는 flow당 2~3분 + macOS·시뮬·Metro 가 필요해 매 PR 기본값이 아니다.
+
+### 전제 (하나라도 불충족이면 녹화 skip + 사용자 보고, 조용히 빈손 금지)
+
+- 부팅된 iOS 시뮬레이터 (`xcrun simctl list devices booted` 에 1개 이상)
+- host + 대상 remote Metro 가 `ENABLE_MIRAGE=true` 로 기동 (예: `pnpm e2e:metro`)
+
+### 절차
+
+1. `git diff --name-only <base>..HEAD` 에서 변경된 `.maestro/flows/**` 추출 → 대상 플로우 목록. 사용자가 플로우를 지정하면 그걸 우선.
+2. 아티팩트 디렉토리 `.maestro/artifacts/` 준비. **반드시 `.gitignore` 에 있어야 함** (없으면 추가) — mp4 는 커밋하지 않는다.
+3. 플로우별 로컬 렌더링 (순차 — 동시 실행은 시뮬 경합):
+   ```
+   maestro record --local <flow> .maestro/artifacts/<flow-basename>.mp4
+   ```
+   `--local` 필수 (클라우드 업로드/렌더 회피, private 레포). 실패한 flow 는 목록에서 빼고 보고 (부분 성공 허용).
+4. **압축 (필수)**. `--local` 출력은 고비트레이트라 크다 — 실측 2분 flow ≈ 98MB(GitHub 영상 첨부 상한 100MB 근접). 첨부 전 압축한다:
+   ```
+   ffmpeg -y -i <in>.mp4 -vcodec libx264 -crf 28 -preset veryfast -vf scale=1280:-2 -an <out>.min.mp4
+   ```
+   실측 98MB→~1.8MB, 1280×720 가독성 좋음(scale=480은 폰이 프레임 중앙에 작아 글자 안 보임). ffmpeg 없으면 `brew install ffmpeg`.
+5. **임베드는 `pr-video` 스킬로 위임.** create-pr 는 여기까지(압축된 `.min.mp4` 목록)만 만들고, 인라인 `<video>` 임베드는 `pr-video` 를 호출한다 — 대상 PR + mp4 경로들(+캡션=flow 설명, 순서=표시 순서) 전달. pr-video 가 agent-browser 로 user-attachments 업로드 → bare URL → 본문 PATCH → 렌더 검증까지 한다.
+
+> 릴리즈 에셋/`<video src>` 태그/외부 URL 로는 인라인 재생 안 됨(CSP, 빈 박스) — pr-video 밖에서 임베드 시도 금지.
+
 ---
 
 ## 권장 생성 흐름
 
 1. `git status --short --branch`, `git diff --stat` 으로 변경 확인.
 2. 베이스 브랜치 자동 검출 (Pre-PR Checklist 참조).
-3. 구조 PR 여부 판정 (하네스 2).
-4. PR 본문 초안 작성 (템플릿 섹션 채우기, 구조 PR 이면 Mermaid 포함).
+3. 구조 PR 여부(하네스 2)와 UI PR 여부(하네스 4) 판정.
+4. PR 본문 초안 작성 (템플릿 섹션 채우기, 구조 PR 이면 Mermaid, UI PR 이면 변경 전·후 첨부 포함).
 5. **하네스 1 self-check** — 섹션 길이 검사.
 6. **하네스 2 self-check** — 구조 PR이면 Mermaid 존재 확인.
-7. 하나라도 위반이면 **중단 + 사용자 보고**. 모두 통과하면 push + PR 생성:
+7. **하네스 4 self-check** — UI PR이면 변경 전·후 두 칸 첨부 확인.
+8. **작성자 표기 self-check** — 커밋·본문에 `Co-Authored-By`·`Generated with` 줄이 없는지 확인.
+9. 하나라도 위반이면 **중단 + 사용자 보고**. 모두 통과하면 push + PR 생성:
    ```bash
    git push -u origin <branch>
    cat > /tmp/pr_body.md << 'ENDOFFILE'
@@ -282,7 +339,7 @@ gh api repos/{owner}/{repo}/pulls/{number} --method PATCH \
 ## 스코프 노트
 
 - 일반 작업 PR. base = `release/X.X.X` 가 기본.
-- Release merge (`Release/{version}` 형식) → `release-create` 스킬.
+- Release merge (제목 `Release/{version} to main` 고정) → `release-to-main` 스킬.
 - Bundle hotfix backport → `bundle-backport` 스킬.
 - `main` 타겟은 위 두 스킬 외에는 명시적 요청 시에만.
 
@@ -292,4 +349,5 @@ gh api repos/{owner}/{repo}/pulls/{number} --method PATCH \
 - 필수 섹션 누락 금지.
 - 영어 단독 본문 금지 (한글 기준).
 - 명시적 요청 없이 `main` 타겟 금지.
-- 하네스 1/2 위반 시 PR 생성 금지 — 사용자에게 보고하고 멈춤.
+- 커밋·PR 본문에 AI 작성자 표기(`Co-Authored-By`, `Generated with`) 금지.
+- 하네스 1/2/4 위반 시 PR 생성 금지 — 사용자에게 보고하고 멈춤.
